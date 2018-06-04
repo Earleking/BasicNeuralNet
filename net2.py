@@ -2,7 +2,6 @@ import numpy as np
 import random
 import math
 import csv
-import xlrd
 
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
@@ -175,19 +174,25 @@ class net:
                         correct += 1
         print("Got " + str(correct) + " correct")
         print("Got " + str(len(inputs) - correct) + " wrong")
-a = net([4,10,3])
-# print(a.activate([1]))
-# a.train([[1], [1], [1], [1], [1], [1], [1], [1]], [[1], [1], [1], [1], [1], [1], [1], [1]])
-# print(a.activate([1]))
 
+
+# Everything below this is for setting up and using the net
+a = net([4,10,3])
+
+#Create the input and output lists
+#These lists are 2-d arrays. Each list within the list represets one trial
 inputs = []
 outputs = []
-with open("sincos.csv", newline='') as book:
+#Open up the test data csv
+with open("flower_test_data.csv", newline='') as book:
     spamreader = csv.reader(book, delimiter=' ', quotechar='|')
+    # Loop through the lines and add the data to the input/output lists
     for y,row in enumerate(spamreader):
         if(y == 0):
             continue
+        #The inputs and out puts need to be sanitized before being input into the net
         inputs.append([float(row[0].split(",")[0])/6, float(row[0].split(",")[1])/3, float(row[0].split(",")[2])/3.76, float(row[0].split(",")[3])/1.2])
+        #Sanitizing outputs
         if row[0].split(",")[4] == "Iris-setosa":
             outputs.append([1, 0, 0])
         elif row[0].split(",")[4] == "Iris-versicolor":
@@ -195,19 +200,28 @@ with open("sincos.csv", newline='') as book:
         else:
             outputs.append([0, 0, 1])
 
+#Running a trial run to see the inital data
+#The activate function returns the entire array. use [-1] to get the output layer
 print(a.activate([5.1/6,3.5/3,1.4/3.76,0.2/1.2]))
+
+#the test function runs tests against the outputs to see the ratio of correct to incorrect
+#The print is already built into the test function
 a.test(inputs, outputs)
-while a.error(inputs, outputs) > .03:
+
+#Keep running against the training data until desired accuract is reached
+desired_accuracy = 0.03
+while a.error(inputs, outputs) > desired_accuracy:
     for i in range(0, len(inputs)):
         t = random.randint(0, len(inputs) - 1)
         inputs[i], inputs[t] = inputs[t], inputs[i]
         outputs[i], outputs[t] = outputs[t], outputs[i]
     a.train(inputs, outputs)
-    #print(a.error(inputs, outputs))
 
+# After training is done then retest. With the current setup the you get 146/149 or a 98% accuracy
 a.test(inputs, outputs)
+
+# If desired you can print out a test case of each to see difference in values
 # print(a.activate([5.1/6,3.5/3,1.4/3.76,0.2/1.2]))
 # print(a.activate([5.5/6,2.3/3,4.0/3.76,1.3/1.2]))
 # print(a.activate([6.3/6,2.9/3,5.6/3.76,1.8/1.2]))
 
-# print(outputs)
