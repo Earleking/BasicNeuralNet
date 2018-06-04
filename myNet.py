@@ -72,7 +72,6 @@ class net:
                 for j in range(len(self.weights[l])):
                     for k in range(len(self.weights[l][j])):
                         self.weights[l][j][k] -= (self.errors[l][j] * self.activations[l - 1][k])
-
 a = net(2, [2, 5, 4, 2])
 print(a.activate([.5, .6])) 
 #print(np.matmul([1, 2], [2, 3]))
