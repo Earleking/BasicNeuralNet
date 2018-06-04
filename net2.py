@@ -145,7 +145,7 @@ class net:
             if (case_number + 1) % 10 == 0:
                 #divide changes by n
                 for i in range(len(weight_change)):
-                    weight_change[i] = (np.divide(weight_change[i], 10))
+                    weight_change[i] = (np.divide(weight_change[i], 20))
 
                 #change values
                 #First bias
@@ -157,8 +157,25 @@ class net:
                     self.weight_matrix[i] = np.add(self.weight_matrix[i], weight_change[i])
                 #reset delta weight
                 weight_change = []
-        
-a = net([4,5,3])
+
+    def test(self, inputs, predictedOut):
+        correct = 0
+        for case_number, case_input in enumerate(inputs):
+            #Assign for future ease
+            outputs = self.activate(case_input)[-1]
+            currentBest = [-1, 0] #current best choice and score
+            for i in range(len(outputs)):
+                if(outputs[i] > currentBest[1]):
+                    # if a higher score is found change choice to it
+                    currentBest = [i, outputs[i]]
+            #check ans
+            for i in range(len(outputs)):
+                if(predictedOut[case_number][i] == 1):
+                    if(currentBest[0] == i):
+                        correct += 1
+        print("Got " + str(correct) + " correct")
+        print("Got " + str(len(inputs) - correct) + " wrong")
+a = net([4,10,3])
 # print(a.activate([1]))
 # a.train([[1], [1], [1], [1], [1], [1], [1], [1]], [[1], [1], [1], [1], [1], [1], [1], [1]])
 # print(a.activate([1]))
@@ -177,26 +194,20 @@ with open("sincos.csv", newline='') as book:
             outputs.append([0, 1, 0])
         else:
             outputs.append([0, 0, 1])
-        #outputs.append([float(row[0].split(",")[7])])
-#shuffle inputs and outputs
-# for i in range(0, len(inputs)):
-#     t = random.randint(0, len(inputs) - 1)
-#     inputs[i], inputs[t] = inputs[t], inputs[i]
-#     outputs[i], outputs[t] = outputs[t], outputs[i]
-# a.print()
-# print(inputs[0][0])
+
 print(a.activate([5.1/6,3.5/3,1.4/3.76,0.2/1.2]))
+a.test(inputs, outputs)
 while a.error(inputs, outputs) > .03:
     for i in range(0, len(inputs)):
         t = random.randint(0, len(inputs) - 1)
         inputs[i], inputs[t] = inputs[t], inputs[i]
         outputs[i], outputs[t] = outputs[t], outputs[i]
     a.train(inputs, outputs)
-    print(a.error(inputs, outputs))
+    #print(a.error(inputs, outputs))
 
-
-print(a.activate([5.1/6,3.5/3,1.4/3.76,0.2/1.2]))
-print(a.activate([5.5/6,2.3/3,4.0/3.76,1.3/1.2]))
-print(a.activate([6.3/6,2.9/3,5.6/3.76,1.8/1.2]))
+a.test(inputs, outputs)
+# print(a.activate([5.1/6,3.5/3,1.4/3.76,0.2/1.2]))
+# print(a.activate([5.5/6,2.3/3,4.0/3.76,1.3/1.2]))
+# print(a.activate([6.3/6,2.9/3,5.6/3.76,1.8/1.2]))
 
 # print(outputs)
