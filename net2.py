@@ -123,9 +123,6 @@ class net:
                     weight_change.append(np.multiply(self.activation_matrix[layer_index - 1], self.error_matrix[layer_index][node])) 
                 #weight_change = np.multiply(weight_change, 5)
                 self.weight_matrix[layer_index] = np.add(self.weight_matrix[layer_index], weight_change)
-            
-            #apply transformations every 10 items
-            if layer_index % 10 == 0:
 
         
         
