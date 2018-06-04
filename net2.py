@@ -42,8 +42,8 @@ class net:
         for layer_index, layer in enumerate(self.weight_matrix):
             for node_index, node in enumerate(layer):
                 for weight_index, weight in enumerate(node):
-                    self.weight_matrix[layer_index][node_index][weight_index] = random.random() - 0.5
-                    self.bias_matrix[layer_index][node_index] = random.random() - 0.5
+                    self.weight_matrix[layer_index][node_index][weight_index] = (random.random() * 2) - 0.5
+                    self.bias_matrix[layer_index][node_index] = (random.random() * 2) - 0.5
         
     def createActivationMatrix(self):
         self.activation_matrix = [] #Define inital array
@@ -53,7 +53,7 @@ class net:
                 self.activation_matrix[layer_index].append(0)
 
     def activate(self, inputs):
-        self.createActivationMatrix()#reset activations
+        #self.createActivationMatrix()#reset activations
         # Check for correct number of inputs
         if(len(inputs) != len(self.activation_matrix[0])):
             return -1
@@ -89,12 +89,17 @@ class net:
         return err / len(inputs)
 
     def train(self, inputs, expected_outputs):
+
         if(len(inputs) != len(expected_outputs)):
             return -1
-        #get cost function
-        running_total = 0
         #create so that it will hold over multiple iterations
         weight_change = []
+        bias_change = []
+        #This will determine how often we update the network. Smaller number means more updates
+        cases_between_updates = 10
+        #Set learning rate. Lower is slower learning
+        learning_rate = 0.5
+        #Now loop through the test cases
         for case_number, case_input in enumerate(inputs):
             #Assign for future ease
             outputs = self.activate(case_input)[-1]
@@ -106,17 +111,10 @@ class net:
             deltaC = np.subtract(expected_outputs[case_number], outputs)
             dSigmoid = np.subtract(outputs, np.multiply(outputs, outputs))
             error = np.multiply(deltaC, dSigmoid)
-            #Apply errors
-            # For bias
-            self.bias_matrix[-1] = np.add(self.bias_matrix[-1], self.error_matrix[-1])
-            # For weights
+
             #Assign output layer error
             self.error_matrix[-1] = error
-            # weight_change = []
-            # for node in range(0, len(self.error_matrix[-1])):
-            #     weight_change.append(np.multiply(self.activation_matrix[-2], self.error_matrix[-1][node])) 
-            # #weight_change = np.multiply(weight_change, 5)
-            # self.weight_matrix[-1] = np.add(self.weight_matrix[-1], weight_change)
+
             #do rest of errors
             for layer_index in range(len(self.activation_matrix) - 2, 0, -1):
                 error = self.error_matrix[layer_index + 1]
@@ -126,31 +124,33 @@ class net:
                 dSigmoid = np.subtract(activations, np.multiply(activations, activations))
                 self.error_matrix[layer_index] = np.multiply(first_part, dSigmoid)
 
-            # If it is the first set then create the weight_change matrix
 
-            if((case_number + 1) % 10 == 1):
+            # If it is the first set then create the weight_change/bias matrix
+
+            if((case_number + 1) % cases_between_updates == 1):
+                bias_change = self.error_matrix
                 for layer_index in range(len(self.activation_matrix)):
                     weight_change.append([])
                 for layer_index in range(len(self.activation_matrix) - 1, 0, -1):
                     for node in range(0, len(self.error_matrix[layer_index])):
                         weight_change[layer_index].append(np.multiply(self.activation_matrix[layer_index - 1], self.error_matrix[layer_index][node]))
+                         
             else:
                 # if not simply update it
+                bias_change = np.add(bias_change, self.error_matrix) # Bias is essentially just a sum of the error_matrix
                 for layer_index in range(len(self.activation_matrix) - 1, 0, -1):
                     for node in range(0, len(self.error_matrix[layer_index])):
                         weight_change[layer_index][node] = np.add(weight_change[layer_index][node], (np.multiply(self.activation_matrix[layer_index - 1], self.error_matrix[layer_index][node])))
 
             #apply transformations every 10 items
-            if (case_number + 1) % 10 == 0:
+            if (case_number + 1) % cases_between_updates == 0:
                 #divide changes by n
                 for i in range(len(weight_change)):
-                    weight_change[i] = (np.divide(weight_change[i], 20))
-
+                    weight_change[i] = np.divide(weight_change[i], (cases_between_updates / learning_rate))
+                    bias_change[i] = np.divide(bias_change[i], cases_between_updates / learning_rate)
                 #change values
                 #First bias
-                for i in range(1, len(weight_change)):
-                    self.bias_matrix[i] = np.add(self.bias_matrix[i], self.error_matrix[i])
-                
+                self.bias_matrix = bias_change
                 #then weights
                 for i in range(1, len(weight_change)):
                     self.weight_matrix[i] = np.add(self.weight_matrix[i], weight_change[i])
@@ -216,6 +216,7 @@ while a.error(inputs, outputs) > desired_accuracy:
         inputs[i], inputs[t] = inputs[t], inputs[i]
         outputs[i], outputs[t] = outputs[t], outputs[i]
     a.train(inputs, outputs)
+    print(a.error(inputs, outputs))
 
 # After training is done then retest. With the current setup the you get 146/149 or a 98% accuracy
 a.test(inputs, outputs)
