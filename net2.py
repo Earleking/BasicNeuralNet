@@ -2,7 +2,6 @@ import numpy as np
 import random
 import math
 import csv
-import xlrd
 
 def sigmoid(x):
     return 1 / (1 + math.exp(-x))
@@ -78,11 +77,24 @@ class net:
     def print(self):
         print(self.weight_matrix)
         
+    def error(self, inputs, expected_outputs):
+        err = 0
+        for case_number, case_input in enumerate(inputs):
+            #Assign for future ease
+            outputs = self.activate(case_input)[-1]
+
+            #Calculate the error for the output layer
+            deltaC = np.subtract(expected_outputs[case_number], outputs)
+            err += np.matmul(deltaC, deltaC)
+        return err / len(inputs)
+
     def train(self, inputs, expected_outputs):
         if(len(inputs) != len(expected_outputs)):
             return -1
         #get cost function
         running_total = 0
+        #create so that it will hold over multiple iterations
+        weight_change = []
         for case_number, case_input in enumerate(inputs):
             #Assign for future ease
             outputs = self.activate(case_input)[-1]
@@ -100,65 +112,116 @@ class net:
             # For weights
             #Assign output layer error
             self.error_matrix[-1] = error
-            weight_change = []
-            for node in range(0, len(self.error_matrix[-1])):
-                weight_change.append(np.multiply(self.activation_matrix[-2], self.error_matrix[-1][node])) 
-            #weight_change = np.multiply(weight_change, 5)
-            self.weight_matrix[-1] = np.add(self.weight_matrix[-1], weight_change)
+            # weight_change = []
+            # for node in range(0, len(self.error_matrix[-1])):
+            #     weight_change.append(np.multiply(self.activation_matrix[-2], self.error_matrix[-1][node])) 
+            # #weight_change = np.multiply(weight_change, 5)
+            # self.weight_matrix[-1] = np.add(self.weight_matrix[-1], weight_change)
             #do rest of errors
             for layer_index in range(len(self.activation_matrix) - 2, 0, -1):
                 error = self.error_matrix[layer_index + 1]
                 activations = self.activation_matrix[layer_index]
                 first_part = np.matmul(np.transpose(self.weight_matrix[layer_index + 1]), error)
+                #Get derivative of sigmoid function for all activations
                 dSigmoid = np.subtract(activations, np.multiply(activations, activations))
                 self.error_matrix[layer_index] = np.multiply(first_part, dSigmoid)
 
-            #Now start effecting values
-            for layer_index in range(len(self.activation_matrix) - 2, 0, -1):
-                # Bias first
-                self.bias_matrix[layer_index] = np.add(self.bias_matrix[layer_index], self.error_matrix[layer_index])
-                # Now weights
+            # If it is the first set then create the weight_change matrix
+
+            if((case_number + 1) % 10 == 1):
+                for layer_index in range(len(self.activation_matrix)):
+                    weight_change.append([])
+                for layer_index in range(len(self.activation_matrix) - 1, 0, -1):
+                    for node in range(0, len(self.error_matrix[layer_index])):
+                        weight_change[layer_index].append(np.multiply(self.activation_matrix[layer_index - 1], self.error_matrix[layer_index][node]))
+            else:
+                # if not simply update it
+                for layer_index in range(len(self.activation_matrix) - 1, 0, -1):
+                    for node in range(0, len(self.error_matrix[layer_index])):
+                        weight_change[layer_index][node] = np.add(weight_change[layer_index][node], (np.multiply(self.activation_matrix[layer_index - 1], self.error_matrix[layer_index][node])))
+
+            #apply transformations every 10 items
+            if (case_number + 1) % 10 == 0:
+                #divide changes by n
+                for i in range(len(weight_change)):
+                    weight_change[i] = (np.divide(weight_change[i], 20))
+
+                #change values
+                #First bias
+                for i in range(1, len(weight_change)):
+                    self.bias_matrix[i] = np.add(self.bias_matrix[i], self.error_matrix[i])
+                
+                #then weights
+                for i in range(1, len(weight_change)):
+                    self.weight_matrix[i] = np.add(self.weight_matrix[i], weight_change[i])
+                #reset delta weight
                 weight_change = []
-                for node in range(0, len(self.error_matrix[layer_index])):
-                    weight_change.append(np.multiply(self.activation_matrix[layer_index - 1], self.error_matrix[layer_index][node])) 
-                #weight_change = np.multiply(weight_change, 5)
-                self.weight_matrix[layer_index] = np.add(self.weight_matrix[layer_index], weight_change)
 
-        
-        
-a = net([4,7,3])
-# print(a.activate([1]))
-# a.train([[1], [1], [1], [1], [1], [1], [1], [1]], [[1], [1], [1], [1], [1], [1], [1], [1]])
-# print(a.activate([1]))
+    def test(self, inputs, predictedOut):
+        correct = 0
+        for case_number, case_input in enumerate(inputs):
+            #Assign for future ease
+            outputs = self.activate(case_input)[-1]
+            currentBest = [-1, 0] #current best choice and score
+            for i in range(len(outputs)):
+                if(outputs[i] > currentBest[1]):
+                    # if a higher score is found change choice to it
+                    currentBest = [i, outputs[i]]
+            #check ans
+            for i in range(len(outputs)):
+                if(predictedOut[case_number][i] == 1):
+                    if(currentBest[0] == i):
+                        correct += 1
+        print("Got " + str(correct) + " correct")
+        print("Got " + str(len(inputs) - correct) + " wrong")
 
+
+# Everything below this is for setting up and using the net
+a = net([4,10,3])
+
+#Create the input and output lists
+#These lists are 2-d arrays. Each list within the list represets one trial
 inputs = []
 outputs = []
-with open("sincos.csv", newline='') as book:
+#Open up the test data csv
+with open("flower_test_data.csv", newline='') as book:
     spamreader = csv.reader(book, delimiter=' ', quotechar='|')
+    # Loop through the lines and add the data to the input/output lists
     for y,row in enumerate(spamreader):
         if(y == 0):
             continue
+        #The inputs and out puts need to be sanitized before being input into the net
         inputs.append([float(row[0].split(",")[0])/6, float(row[0].split(",")[1])/3, float(row[0].split(",")[2])/3.76, float(row[0].split(",")[3])/1.2])
+        #Sanitizing outputs
         if row[0].split(",")[4] == "Iris-setosa":
             outputs.append([1, 0, 0])
         elif row[0].split(",")[4] == "Iris-versicolor":
             outputs.append([0, 1, 0])
         else:
             outputs.append([0, 0, 1])
-        #outputs.append([float(row[0].split(",")[7])])
 
-#shuffle inputs and outputs
-for i in range(0, len(inputs)):
-    t = random.randint(0, len(inputs) - 1)
-    inputs[i], inputs[t] = inputs[t], inputs[i]
-    outputs[i], outputs[t] = outputs[t], outputs[i]
-# a.print()
-# print(inputs[0][0])
-print(a.activate([5.1,3.5,1.4,0.2]))
-a.train(inputs, outputs)  
-print(a.activate([5.1,3.5,1.4,0.2]))
-print(a.activate([5.5,2.3,4.0,1.3]))
-print(a.activate([6.3,2.9,5.6,1.8]))
+#Running a trial run to see the inital data
+#The activate function returns the entire array. use [-1] to get the output layer
+print(a.activate([5.1/6,3.5/3,1.4/3.76,0.2/1.2]))
 
+#the test function runs tests against the outputs to see the ratio of correct to incorrect
+#The print is already built into the test function
+a.test(inputs, outputs)
 
-# print(outputs)
+#Keep running against the training data until desired accuract is reached
+desired_accuracy = 0.03
+while a.error(inputs, outputs) > desired_accuracy:
+    for i in range(0, len(inputs)):
+        t = random.randint(0, len(inputs) - 1)
+        inputs[i], inputs[t] = inputs[t], inputs[i]
+        outputs[i], outputs[t] = outputs[t], outputs[i]
+    a.train(inputs, outputs)
+
+# After training is done then retest. With the current setup the you get 146/149 or a 98% accuracy
+a.test(inputs, outputs)
+
+# If desired you can print out a test case of each to see difference in values
+# print(a.activate([5.1/6,3.5/3,1.4/3.76,0.2/1.2]))
+# print(a.activate([5.5/6,2.3/3,4.0/3.76,1.3/1.2]))
+# print(a.activate([6.3/6,2.9/3,5.6/3.76,1.8/1.2]))
+
