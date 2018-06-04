@@ -83,6 +83,8 @@ class net:
             return -1
         #get cost function
         running_total = 0
+        #create so that it will hold over multiple iterations
+        weight_change = []
         for case_number, case_input in enumerate(inputs):
             #Assign for future ease
             outputs = self.activate(case_input)[-1]
@@ -110,24 +112,38 @@ class net:
                 error = self.error_matrix[layer_index + 1]
                 activations = self.activation_matrix[layer_index]
                 first_part = np.matmul(np.transpose(self.weight_matrix[layer_index + 1]), error)
+                #Get derivative of sigmoid function for all activations
                 dSigmoid = np.subtract(activations, np.multiply(activations, activations))
                 self.error_matrix[layer_index] = np.multiply(first_part, dSigmoid)
 
-            #Now start effecting values
-            for layer_index in range(len(self.activation_matrix) - 2, 0, -1):
-                # Bias first
-                self.bias_matrix[layer_index] = np.add(self.bias_matrix[layer_index], self.error_matrix[layer_index])
-                # Now weights
-                weight_change = []
-                for node in range(0, len(self.error_matrix[layer_index])):
-                    weight_change.append(np.multiply(self.activation_matrix[layer_index - 1], self.error_matrix[layer_index][node])) 
-                #weight_change = np.multiply(weight_change, 5)
-                self.weight_matrix[layer_index] = np.add(self.weight_matrix[layer_index], weight_change)
-            
-            #apply transformations every 10 items
-            if layer_index % 10 == 0:
+            # If it is the first set then create the weight_change matrix
+            if(case_number + 1 % 10 == 1):
+                for layer_index in range(len(self.activation_matrix) - 2, 0, -1):
+                    # Bias first
+                    # self.bias_matrix[layer_index] = np.add(self.bias_matrix[layer_index], self.error_matrix[layer_index])
+                    # Now weights
+                    weight_change.append([])
+                    for node in range(0, len(self.error_matrix[layer_index])):
+                        weight_change.append(np.multiply(self.activation_matrix[layer_index - 1], self.error_matrix[layer_index][node])) 
+                    #weight_change = np.multiply(weight_change, 5)
+                    #self.weight_matrix[layer_index] = np.add(self.weight_matrix[layer_index], weight_change)
+            else:
+                # if not simply update it
+                for layer_index in range(len(self.activation_matrix) - 2, 0, -1):
+                    for node in range(0, len(self.error_matrix[layer_index])):
+                        weight_change[layer_index] = (np.multiply(self.activation_matrix[layer_index - 1], self.error_matrix[layer_index][node])) 
 
-        
+            #apply transformations every 10 items
+            if case_number + 1 % 10 == 0:
+                #divide changes by n
+                weight_change = np.divide(weight_change / 10)
+                #change values
+                #First bias
+                self.bias_matrix = np.add(self.bias_matrix, self.error_matrix)
+                #then weights
+                self.weight_matrix = np.add(self.weight_matrix, weight_change)
+                #reset delta weight
+                weight_change = []
         
 a = net([4,7,3])
 # print(a.activate([1]))
