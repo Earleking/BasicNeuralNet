@@ -78,6 +78,17 @@ class net:
     def print(self):
         print(self.weight_matrix)
         
+    def error(self, inputs, expected_outputs):
+        err = 0
+        for case_number, case_input in enumerate(inputs):
+            #Assign for future ease
+            outputs = self.activate(case_input)[-1]
+
+            #Calculate the error for the output layer
+            deltaC = np.subtract(expected_outputs[case_number], outputs)
+            err += np.matmul(deltaC, deltaC)
+        return err / len(inputs)
+
     def train(self, inputs, expected_outputs):
         if(len(inputs) != len(expected_outputs)):
             return -1
@@ -102,11 +113,11 @@ class net:
             # For weights
             #Assign output layer error
             self.error_matrix[-1] = error
-            weight_change = []
-            for node in range(0, len(self.error_matrix[-1])):
-                weight_change.append(np.multiply(self.activation_matrix[-2], self.error_matrix[-1][node])) 
-            #weight_change = np.multiply(weight_change, 5)
-            self.weight_matrix[-1] = np.add(self.weight_matrix[-1], weight_change)
+            # weight_change = []
+            # for node in range(0, len(self.error_matrix[-1])):
+            #     weight_change.append(np.multiply(self.activation_matrix[-2], self.error_matrix[-1][node])) 
+            # #weight_change = np.multiply(weight_change, 5)
+            # self.weight_matrix[-1] = np.add(self.weight_matrix[-1], weight_change)
             #do rest of errors
             for layer_index in range(len(self.activation_matrix) - 2, 0, -1):
                 error = self.error_matrix[layer_index + 1]
@@ -117,35 +128,37 @@ class net:
                 self.error_matrix[layer_index] = np.multiply(first_part, dSigmoid)
 
             # If it is the first set then create the weight_change matrix
-            if(case_number + 1 % 10 == 1):
-                for layer_index in range(len(self.activation_matrix) - 2, 0, -1):
-                    # Bias first
-                    # self.bias_matrix[layer_index] = np.add(self.bias_matrix[layer_index], self.error_matrix[layer_index])
-                    # Now weights
+
+            if((case_number + 1) % 10 == 1):
+                for layer_index in range(len(self.activation_matrix)):
                     weight_change.append([])
+                for layer_index in range(len(self.activation_matrix) - 1, 0, -1):
                     for node in range(0, len(self.error_matrix[layer_index])):
-                        weight_change.append(np.multiply(self.activation_matrix[layer_index - 1], self.error_matrix[layer_index][node])) 
-                    #weight_change = np.multiply(weight_change, 5)
-                    #self.weight_matrix[layer_index] = np.add(self.weight_matrix[layer_index], weight_change)
+                        weight_change[layer_index].append(np.multiply(self.activation_matrix[layer_index - 1], self.error_matrix[layer_index][node]))
             else:
                 # if not simply update it
-                for layer_index in range(len(self.activation_matrix) - 2, 0, -1):
+                for layer_index in range(len(self.activation_matrix) - 1, 0, -1):
                     for node in range(0, len(self.error_matrix[layer_index])):
-                        weight_change[layer_index] = (np.multiply(self.activation_matrix[layer_index - 1], self.error_matrix[layer_index][node])) 
+                        weight_change[layer_index][node] = np.add(weight_change[layer_index][node], (np.multiply(self.activation_matrix[layer_index - 1], self.error_matrix[layer_index][node])))
 
             #apply transformations every 10 items
-            if case_number + 1 % 10 == 0:
+            if (case_number + 1) % 10 == 0:
                 #divide changes by n
-                weight_change = np.divide(weight_change / 10)
+                for i in range(len(weight_change)):
+                    weight_change[i] = (np.divide(weight_change[i], 10))
+
                 #change values
                 #First bias
-                self.bias_matrix = np.add(self.bias_matrix, self.error_matrix)
+                for i in range(1, len(weight_change)):
+                    self.bias_matrix[i] = np.add(self.bias_matrix[i], self.error_matrix[i])
+                
                 #then weights
-                self.weight_matrix = np.add(self.weight_matrix, weight_change)
+                for i in range(1, len(weight_change)):
+                    self.weight_matrix[i] = np.add(self.weight_matrix[i], weight_change[i])
                 #reset delta weight
                 weight_change = []
         
-a = net([4,7,3])
+a = net([4,5,3])
 # print(a.activate([1]))
 # a.train([[1], [1], [1], [1], [1], [1], [1], [1]], [[1], [1], [1], [1], [1], [1], [1], [1]])
 # print(a.activate([1]))
@@ -165,19 +178,25 @@ with open("sincos.csv", newline='') as book:
         else:
             outputs.append([0, 0, 1])
         #outputs.append([float(row[0].split(",")[7])])
-
 #shuffle inputs and outputs
-for i in range(0, len(inputs)):
-    t = random.randint(0, len(inputs) - 1)
-    inputs[i], inputs[t] = inputs[t], inputs[i]
-    outputs[i], outputs[t] = outputs[t], outputs[i]
+# for i in range(0, len(inputs)):
+#     t = random.randint(0, len(inputs) - 1)
+#     inputs[i], inputs[t] = inputs[t], inputs[i]
+#     outputs[i], outputs[t] = outputs[t], outputs[i]
 # a.print()
 # print(inputs[0][0])
-print(a.activate([5.1,3.5,1.4,0.2]))
-a.train(inputs, outputs)  
-print(a.activate([5.1,3.5,1.4,0.2]))
-print(a.activate([5.5,2.3,4.0,1.3]))
-print(a.activate([6.3,2.9,5.6,1.8]))
+print(a.activate([5.1/6,3.5/3,1.4/3.76,0.2/1.2]))
+while a.error(inputs, outputs) > .03:
+    for i in range(0, len(inputs)):
+        t = random.randint(0, len(inputs) - 1)
+        inputs[i], inputs[t] = inputs[t], inputs[i]
+        outputs[i], outputs[t] = outputs[t], outputs[i]
+    a.train(inputs, outputs)
+    print(a.error(inputs, outputs))
 
+
+print(a.activate([5.1/6,3.5/3,1.4/3.76,0.2/1.2]))
+print(a.activate([5.5/6,2.3/3,4.0/3.76,1.3/1.2]))
+print(a.activate([6.3/6,2.9/3,5.6/3.76,1.8/1.2]))
 
 # print(outputs)
