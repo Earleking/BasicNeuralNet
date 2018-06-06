@@ -42,8 +42,8 @@ class net:
         for layer_index, layer in enumerate(self.weight_matrix):
             for node_index, node in enumerate(layer):
                 for weight_index, weight in enumerate(node):
-                    self.weight_matrix[layer_index][node_index][weight_index] = (random.random() * 2) - 0.5
-                    self.bias_matrix[layer_index][node_index] = (random.random() * 2) - 0.5
+                    self.weight_matrix[layer_index][node_index][weight_index] = (random.random() * 1) - 0.5
+                    self.bias_matrix[layer_index][node_index] = (random.random() * 1) - 0.5
         
     def createActivationMatrix(self):
         self.activation_matrix = [] #Define inital array
@@ -53,7 +53,7 @@ class net:
                 self.activation_matrix[layer_index].append(0)
 
     def activate(self, inputs):
-        #self.createActivationMatrix()#reset activations
+        # self.createActivationMatrix()#reset activations
         # Check for correct number of inputs
         if(len(inputs) != len(self.activation_matrix[0])):
             return -1
@@ -61,17 +61,17 @@ class net:
         self.activation_matrix[0] = inputs
         for layer_index, layer in enumerate(self.weight_matrix):
             if(layer_index == 0):
-                continue #skip input layer
+                continue # skip input layer
             for node_index, node in enumerate(layer):
-                #Compute sum of weights
+                # Compute sum of weights
                 self.activation_matrix[layer_index][node_index] = np.matmul(self.activation_matrix[layer_index - 1], self.weight_matrix[layer_index][node_index])
-                #Add the bias
+                # Add the bias
                 self.activation_matrix[layer_index][node_index] += self.bias_matrix[layer_index][node_index]
-                #Assign z matrix
+                # Assign z matrix
                 self.z_matrix[layer_index][node_index] = self.activation_matrix[layer_index][node_index]
-                #Normalize
+                # Normalize
                 self.activation_matrix[layer_index][node_index] = sigmoid(self.activation_matrix[layer_index][node_index])
-                #print(value)
+                # print(value)
         return self.activation_matrix
         
     def print(self):
@@ -95,10 +95,10 @@ class net:
         #create so that it will hold over multiple iterations
         weight_change = []
         bias_change = []
-        #This will determine how often we update the network. Smaller number means more updates
-        cases_between_updates = 10
+        #This will determine how often we update the network. Smaller number means smaller batches
+        cases_between_updates = 50
         #Set learning rate. Lower is slower learning
-        learning_rate = 0.5
+        learning_rate = 1
         #Now loop through the test cases
         for case_number, case_input in enumerate(inputs):
             #Assign for future ease
@@ -174,55 +174,4 @@ class net:
                         correct += 1
         print("Got " + str(correct) + " correct")
         print("Got " + str(len(inputs) - correct) + " wrong")
-
-
-# Everything below this is for setting up and using the net
-a = net([4,10,3])
-
-#Create the input and output lists
-#These lists are 2-d arrays. Each list within the list represets one trial
-inputs = []
-outputs = []
-#Open up the test data csv
-with open("flower_test_data.csv", newline='') as book:
-    spamreader = csv.reader(book, delimiter=' ', quotechar='|')
-    # Loop through the lines and add the data to the input/output lists
-    for y,row in enumerate(spamreader):
-        if(y == 0):
-            continue
-        #The inputs and out puts need to be sanitized before being input into the net
-        inputs.append([float(row[0].split(",")[0])/6, float(row[0].split(",")[1])/3, float(row[0].split(",")[2])/3.76, float(row[0].split(",")[3])/1.2])
-        #Sanitizing outputs
-        if row[0].split(",")[4] == "Iris-setosa":
-            outputs.append([1, 0, 0])
-        elif row[0].split(",")[4] == "Iris-versicolor":
-            outputs.append([0, 1, 0])
-        else:
-            outputs.append([0, 0, 1])
-
-#Running a trial run to see the inital data
-#The activate function returns the entire array. use [-1] to get the output layer
-print(a.activate([5.1/6,3.5/3,1.4/3.76,0.2/1.2]))
-
-#the test function runs tests against the outputs to see the ratio of correct to incorrect
-#The print is already built into the test function
-a.test(inputs, outputs)
-
-#Keep running against the training data until desired accuract is reached
-desired_accuracy = 0.03
-while a.error(inputs, outputs) > desired_accuracy:
-    for i in range(0, len(inputs)):
-        t = random.randint(0, len(inputs) - 1)
-        inputs[i], inputs[t] = inputs[t], inputs[i]
-        outputs[i], outputs[t] = outputs[t], outputs[i]
-    a.train(inputs, outputs)
-    print(a.error(inputs, outputs))
-
-# After training is done then retest. With the current setup the you get 146/149 or a 98% accuracy
-a.test(inputs, outputs)
-
-# If desired you can print out a test case of each to see difference in values
-# print(a.activate([5.1/6,3.5/3,1.4/3.76,0.2/1.2]))
-# print(a.activate([5.5/6,2.3/3,4.0/3.76,1.3/1.2]))
-# print(a.activate([6.3/6,2.9/3,5.6/3.76,1.8/1.2]))
 
